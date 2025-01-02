@@ -26,3 +26,17 @@ Copy code
 curl -X POST "http://127.0.0.1:8000/analyze/video/" \
      -H "accept: application/json" \
      -F "file=@path/to/your/video.mp4"
+
+How to run:
+backend:
+venv\Scripts\activate
+python -m venv venv
+pip install -r requirements.txt
+uvicorn app:app --host 0.0.0.0 --port 8000
+or 
+python -m uvicorn app:app --host 0.0.0.0 --port 8000 --log-level debug
+
+frontend:
+npm install
+npm start
+
