@@ -3,4 +3,4 @@ uvicorn
 pillow
 opencv-python-headless
 opencv-python
-shutil
+python-multipart

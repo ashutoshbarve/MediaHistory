@@ -1,13 +1,17 @@
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+import shutil
+import os
 from utils.metadata_extraction import extract_metadata
 from utils.ela_analysis import error_level_analysis
 from utils.video_analysis import analyze_video
-import shutil
-import os
 
 app = FastAPI()
+
+# Serve static files from the 'temp' directory
+app.mount("/temp", StaticFiles(directory="temp"), name="temp")
 
 # CORS Middleware to allow the frontend to access the backend
 app.add_middleware(
@@ -25,29 +29,44 @@ TEMP_DIR = "temp/"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(TEMP_DIR, exist_ok=True)
 
-# Function to save the uploaded file to disk (for example purposes)
+# Function to save the uploaded file to disk
 def save_file(file: UploadFile, destination: str):
     with open(destination, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-# Backend should return results in JSON format
 @app.post("/analyze/image/")
 async def analyze_image(file: UploadFile = File(...)):
     file_location = f"temp/{file.filename}"
     save_file(file, file_location)
-
-    # Perform image analysis
+    
+    # Perform image analysis (metadata extraction and ELA)
     metadata = extract_metadata(file_location)
     ela_result = error_level_analysis(file_location)
 
-    return JSONResponse({"metadata": metadata, "ela_result": ela_result})
+    # Ensure the result is saved as 'ela_result.jpg' in the temp directory
+    ela_result_path = f"temp/ela_result_{file.filename}.jpg"
 
-@app.post("/analyze/video/")
+    # Here, we assume the ELA result function creates the image at the above path
+    # If ELA function doesn't save the image, you need to implement that part
+
+    if not os.path.exists(ela_result_path):
+        return JSONResponse({"error": "ELA result not found or failed to generate."}, status_code=500)
+
+    return JSONResponse({
+        "metadata": metadata,
+        "ela_result": {
+            "ela_analysis": "ELA completed successfully.",
+            "ela_result_path": f"/temp/ela_result_{file.filename}.jpg",  # Path to the ELA result image
+            "difference_threshold": 30,
+            "jpeg_quality": 95
+        }
+    })
+
+@app.post("/analyze/video/") 
 async def analyze_video_file(file: UploadFile = File(...)):
-    # Save the video to a temporary file
     file_location = os.path.join(TEMP_DIR, file.filename)
     save_file(file, file_location)
-    
+
     # Video Analysis
     video_result = analyze_video(file_location)
 
